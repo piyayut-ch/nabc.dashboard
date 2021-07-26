@@ -1,0 +1,101 @@
+```{r}
+source(here::here('global.R'), encoding = 'UTF-8')
+```
+
+```{r}
+e_common(
+  font_family = "Athiti",
+  theme = NULL
+)
+
+echart_price <- function(df, price, ref) {
+  meta <- ref %>% dplyr::filter(price_name == price) %>% as.list()
+  title <- glue::glue('ราคา{price} ที่เกษตรกรขายได้ ณ ไร่นา')
+  df <- df %>%
+    dplyr::filter(price_name %in% price) %>%
+    dplyr::select(date, price_name, commod, unit, value)
+  
+  df %>%
+    e_charts(x = date) %>% 
+    e_line(
+      serie = value, name = '', symbol = 'none',
+      markArea = list(
+        itemStyle = list(color = 'rgba(255, 173, 177, 0.4)'),
+        data = list(
+          list(list(name = "ระบาดรอบ 1", xAxis = as.Date('2020-03-01')), list(xAxis = as.Date('2020-04-01'))),
+          list(list(name = "รอบ 2", xAxis = as.Date('2021-01-01')), list(xAxis = as.Date('2021-02-01'))),
+          list(list(name = "รอบ 3", xAxis = as.Date('2021-04-01')), list(xAxis = as.Date('2021-06-01')))
+        )
+      )
+    ) %>%
+    e_x_axis(name = "ปี") %>%
+    e_title(title, meta$unit) %>%
+    e_toolbox_feature(feature = "saveAsImage") %>%
+    e_grid(left = "50", right = "5%")
+}
+
+echart_price(data_price_graph, 'ข้าวเปลือกเจ้า ความชื้น 15%', ref_price_oae)
+```
+
+```{r}
+echart_trade <- function(df, .subproduct, .impexp, .variable) {
+  df <- df %>%
+    dplyr::filter(subproduct_name == .subproduct, impexp == .impexp, variable == .variable) %>%
+    dplyr::select(date, subproduct_name, impexp, variable, unit, value)
+  
+  meta <- df %>% slice(1) %>% as.list()
+  title <- glue::glue('{.variable}{.impexp} {.subproduct}')
+  
+  df %>%
+    e_charts(x = date) %>% 
+    e_line(
+      serie = value, name = '', symbol = 'none',
+      markArea = list(
+        itemStyle = list(color = 'rgba(255, 173, 177, 0.4)'),
+        data = list(
+          list(list(name = "ระบาดรอบ 1", xAxis = as.Date('2020-03-01')), list(xAxis = as.Date('2020-04-01'))),
+          list(list(name = "รอบ 2", xAxis = as.Date('2021-01-01')), list(xAxis = as.Date('2021-02-01'))),
+          list(list(name = "รอบ 3", xAxis = as.Date('2021-04-01')), list(xAxis = as.Date('2021-06-01')))
+        )
+      )
+    ) %>%
+    e_x_axis(name = "ปี") %>%
+    e_title(title, meta$unit) %>%
+    e_toolbox_feature(feature = "saveAsImage") %>%
+    e_grid(left = "70", right = "5%")
+}
+```
+
+```{r}
+echart_trade(data_trade_graph, 'ข้าวนึ่ง', 'ส่งออก', 'ปริมาณ')
+```
+
+```{r}
+ref_price_oae %>% filter(commod == 'ข้าว')
+```
+
+```{r}
+itemStyle: {
+    color: 'rgba(255, 173, 177, 0.4)'
+},
+data: [ [{
+    name: '早高峰',
+    xAxis: '07:30'
+}, {
+    xAxis: '10:00'
+}], [{
+    name: '晚高峰',
+    xAxis: '17:30'
+}, {
+    xAxis: '21:15'
+}] ]
+}
+```
+
+```{r}
+data_price_graph
+```
+
+```{r}
+
+```

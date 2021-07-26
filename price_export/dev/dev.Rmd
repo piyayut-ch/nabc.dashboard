@@ -1,0 +1,259 @@
+```{r}
+source(here::here('global.R'), encoding = 'UTF-8')
+```
+
+# Data
+
+```{r}
+price_oae_m
+ref_price_oae
+data_price_table
+data_price_graph
+```
+
+```{r}
+trade_m
+ref_trade
+data_trade_table
+data_trade_graph
+```
+
+# Price
+
+```{r}
+plot_price(data_price_graph, 'ข้าวเปลือกเจ้า ความชื้น 15%', ref_price_oae)
+```
+
+```{r}
+tbl_price(data_price_table)
+```
+
+# Export
+
+```{r}
+tbl_trade(data_trade_table, 'กระเทียมแห้งเป็นผง')
+```
+
+```{r}
+plot_trade(data_trade_graph, 'ข้าวนึ่ง', 'ส่งออก', 'ปริมาณ')
+```
+
+```{r}
+# reactable(
+#   data_price_table,
+#   height = '500px',
+#   filterable = FALSE,
+#   searchable = FALSE,
+#   highlight = TRUE,
+#   columns = list(
+#     price_name = colDef(
+#       name = 'ราคา', width = 400,
+#       style = list(borderRight = "1px solid rgba(0, 0, 0, 0.1)"),
+#       cell = function(value, index) {
+#         commod <- data_price_table$commod[index]
+#         unit <- data_price_table$unit[index]
+#         tagList(
+#           div(style = list(fontWeight = 400), value),
+#           div(style = list(fontSize = 12), unit)
+#         )
+#       }
+#     ),
+#     commod = colDef(name = 'สินค้า', show = FALSE),
+#     unit = colDef(name = 'หน่วย', show = FALSE),
+#     last5y = colDef(
+#       name = "ราคาเฉลี่ย 2558-2562", width = 100,
+#       format = colFormat(separators = TRUE)
+#     ),
+#     wave1 = colDef(
+#       name = "ราคาเฉลี่ย", width = 100,
+#       format = colFormat(separators = TRUE)
+#     ),
+#     wave1_pc = colDef(
+#       header = with_tooltip("%", "ร้อยละการเปลี่ยนแปลงเทียบกับราคาเฉลี่ย 5 ปี"),
+#       width = 50,
+#       cell = function(value, index) {
+#         v = data_price_table$wave1_pc[[index]]
+#         ifelse(v >= 0, paste0("+", v), v)
+#       },
+#       style = function(value, index) {
+#         v = data_price_table$wave1_pc[[index]]
+#         color = ifelse(v > 0, "#008000", "#e00000")
+#         list(color = color)
+#       }
+#     ),
+#     wave2 = colDef(
+#       name = "ราคาเฉลี่ย", width = 100,
+#       format = colFormat(separators = TRUE)
+#     ),
+#     wave2_pc = colDef(
+#       header = with_tooltip("%", "ร้อยละการเปลี่ยนแปลงเทียบกับราคาเฉลี่ย 5 ปี"),
+#       width = 50,
+#       cell = function(value, index) {
+#         v = data_price_table$wave2_pc[[index]]
+#         ifelse(v >= 0, paste0("+", v), v)
+#       },
+#       style = function(value, index) {
+#         v = data_price_table$wave2_pc[[index]]
+#         color = ifelse(v > 0, "#008000", "#e00000")
+#         list(color = color)
+#       }
+#     ),
+#     wave3 = colDef(
+#       name = "ราคาเฉลี่ย", width = 100,
+#       format = colFormat(separators = TRUE)
+#     ),
+#     wave3_pc = colDef(
+#       header = with_tooltip("%", "ร้อยละการเปลี่ยนแปลงเทียบกับราคาเฉลี่ย 5 ปี"),
+#       width = 50,
+#       cell = function(value, index) {
+#         v = data_price_table$wave3_pc[[index]]
+#         ifelse(v >= 0, paste0("+", v), v)
+#       },
+#       style = function(value, index) {
+#         v = data_price_table$wave3_pc[[index]]
+#         color = ifelse(v > 0, "#008000", "#e00000")
+#         list(color = color)
+#       }
+#     )
+    
+#   ),
+#   columnGroups = list(
+#     colGroup(
+#       name = "การระบาดรอบ 1", 
+#       columns = c("wave1", "wave1_pc")
+#     ),
+#     colGroup(
+#       name = "การระบาดรอบ 2", 
+#       columns = c("wave2", "wave2_pc")
+#     ),
+#     colGroup(
+#       name = "การระบาดรอบ 3", 
+#       columns = c("wave3", "wave3_pc")
+#     )
+#   )
+# )
+
+# data_price_table <- price_oae_m %>% 
+#   mutate(
+#     period = case_when(
+#    %>%   year >= 2558 & year <= 2562 ~ 'last5y',
+#       date >= '2020-03-01' & date <= '2020-04-01' ~ 'wave1',
+#       date >= '2021-01-01' & date <= '2021-02-01' ~ 'wave2',
+#       date >= '2021-04-01' & date <= '2021-06-01' ~ 'wave3'
+#     )
+#   ) %>% 
+#   drop_na(period) %>%
+#   group_by(price_name, commod, unit, period) %>%
+#   summarize(value = round(mean(value), 1)) %>% ungroup() %>%
+#   pivot_wider(1:4, names_from = 'period', values_from = 'value') %>%
+#   mutate(
+#     wave1_pc = percent_change(wave1, last5y),
+#     wave2_pc = percent_change(wave2, last5y),
+#     wave3_pc = percent_change(wave3, last5y)
+#   )
+
+# with_tooltip <- function(value, tooltip) {
+#   tags$abbr(style = "text-decoration: underline; text-decoration-style: dotted; cursor: help",
+#             title = tooltip, value)
+# }
+
+# tbl_price <- function(df) {
+#   reactable::reactable(
+#     df,
+#     height = '500px',
+#     filterable = FALSE,
+#     searchable = FALSE,
+#     highlight = TRUE,
+#     columns = list(
+#       price_name = reactable::colDef(
+#         name = 'ราคา', width = 400,
+#         style = list(borderRight = "1px solid rgba(0, 0, 0, 0.1)"),
+#         cell = function(value, index) {
+#           commod <- df$commod[index]
+#           unit <- df$unit[index]
+#           htmltools::tagList(
+#             htmltools::div(style = list(fontWeight = 400), value),
+#             htmltools::div(style = list(fontSize = 12), unit)
+#           )
+#         }
+#       ),
+#       commod = reactable::colDef(name = 'สินค้า', show = FALSE),
+#       unit = reactable::colDef(name = 'หน่วย', show = FALSE),
+#       last5y = reactable::colDef(
+#         name = "ราคาเฉลี่ย 2558-2562", width = 100,
+#         format = reactable::colFormat(separators = TRUE)
+#       ),
+#       wave1 = reactable::colDef(
+#         name = "ราคาเฉลี่ย", width = 100,
+#         format = reactable::colFormat(separators = TRUE)
+#       ),
+#       wave1_pc = reactable::colDef(
+#         header = with_tooltip("%", "ร้อยละการเปลี่ยนแปลงเทียบกับราคาเฉลี่ย 5 ปี"),
+#         width = 50,
+#         cell = function(value, index) {
+#           v = df$wave1_pc[[index]]
+#           ifelse(v >= 0, paste0("+", v), v)
+#         },
+#         style = function(value, index) {
+#           v = df$wave1_pc[[index]]
+#           color = ifelse(v > 0, "#008000", "#e00000")
+#           list(color = color)
+#         }
+#       ),
+#       wave2 = reactable::colDef(
+#         name = "ราคาเฉลี่ย", width = 100,
+#         format = reactable::colFormat(separators = TRUE)
+#       ),
+#       wave2_pc = reactable::colDef(
+#         header = with_tooltip("%", "ร้อยละการเปลี่ยนแปลงเทียบกับราคาเฉลี่ย 5 ปี"),
+#         width = 50,
+#         cell = function(value, index) {
+#           v = df$wave2_pc[[index]]
+#           ifelse(v >= 0, paste0("+", v), v)
+#         },
+#         style = function(value, index) {
+#           v = df$wave2_pc[[index]]
+#           color = ifelse(v > 0, "#008000", "#e00000")
+#           list(color = color)
+#         }
+#       ),
+#       wave3 = reactable::colDef(
+#         name = "ราคาเฉลี่ย", width = 100,
+#         format = reactable::colFormat(separators = TRUE)
+#       ),
+#       wave3_pc = reactable::colDef(
+#         header = with_tooltip("%", "ร้อยละการเปลี่ยนแปลงเทียบกับราคาเฉลี่ย 5 ปี"),
+#         width = 50,
+#         cell = function(value, index) {
+#           v = df$wave3_pc[[index]]
+#           ifelse(v >= 0, paste0("+", v), v)
+#         },
+#         style = function(value, index) {
+#           v = df$wave3_pc[[index]]
+#           color = ifelse(v > 0, "#008000", "#e00000")
+#           list(color = color)
+#         }
+#       )
+
+#     ),
+#     columnGroups = list(
+#       reactable::colGroup(
+#         name = "การระบาดรอบ 1", 
+#         columns = c("wave1", "wave1_pc")
+#       ),
+#       reactable::colGroup(
+#         name = "การระบาดรอบ 2", 
+#         columns = c("wave2", "wave2_pc")
+#       ),
+#       reactable::colGroup(
+#         name = "การระบาดรอบ 3", 
+#         columns = c("wave3", "wave3_pc")
+#       )
+#     )
+#   )
+# }
+```
+
+```{r}
+
+```
