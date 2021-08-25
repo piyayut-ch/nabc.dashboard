@@ -14,7 +14,7 @@ fluidPage(
     tabsetPanel(
       type = "tabs",
       tabPanel("รายปี", DTOutput('tbl_y')),
-      tabPanel("รายไตรมาศ", DTOutput('tbl_q')),
+      tabPanel("รายไตรมาส", DTOutput('tbl_q')),
       tabPanel("รายเดือน", DTOutput('tbl_m'))
     ),
     width = 10
