@@ -12,8 +12,8 @@ xfun::pkg_attach2(pkgs, message = FALSE)
 
 
 source(here('utils.R'), encoding = 'UTF-8')
-loadfonts(device = "win", quiet = TRUE)
-Sys.setlocale("LC_CTYPE", "Thai")
+# loadfonts(device = "win", quiet = TRUE)
+# Sys.setlocale("LC_CTYPE", "Thai")
 
 ################################################################################
 # load data and reference table -----

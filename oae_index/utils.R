@@ -72,7 +72,7 @@ DT_index <- function(df, tf){
       pageLength = 40,
       initComplete = JS(
         "function(settings, json) {",
-#         "$('body').css({'font-family': 'Athiti'});",
+        "$('body').css({'font-family': 'Athiti'});",
         "$('div.dt-buttons').css({'float' : 'right'});",
         "}"
       ),
