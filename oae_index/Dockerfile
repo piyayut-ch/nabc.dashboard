@@ -25,7 +25,7 @@ RUN R -e 'install.packages(c(\
               "reactable", "DT", \
               "extrafont", "hrbrthemes", "ggsci", "scales" \
             ), \
-            repos="https://packagemanager.rstudio.com/cran/__linux__/focal/2021-08-01"\
+            repos="https://packagemanager.rstudio.com/cran/__linux__/focal/2021-07-01"\
           )'
 
 # copy the app directory into the image
