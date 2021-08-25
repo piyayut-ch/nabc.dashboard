@@ -1,0 +1,258 @@
+---
+title: สรุปราคาสินค้าเกษตรที่สำคัญรายสัปดาห์
+output: html_document
+
+---
+
+```{r include=FALSE, message=FALSE}
+# set up
+library(htmltools)
+library(tidyverse)
+library(readxl)
+library(lubridate)
+library(glue)
+library(crosstalk)
+library(reactable)
+library(DT)
+library(sparkline)
+library(here)
+```
+
+```{r include=FALSE, message=FALSE}
+# data prep
+## load data
+ref_price_oae <- read_excel(here("data", "ref", "ref_price_oae.xlsx"))
+ref_month <- read_excel(here("data", "ref", "ref_month.xlsx"))
+month_th <- ref_month$month_name %>% set_names(ref_month$month)
+
+df <- readRDS(here("data", "price_oae_w.rds")) %>%
+  filter(!is.na(commod)) %>%
+  left_join(
+    ref_price_oae, 
+    by = c("price_name" = "name", "commod" = "commod", "unit" = "unit")
+  ) %>%
+  filter(is_represented == 1) %>%
+  mutate(value = ifelse(value > 250, round(value, 0), value))
+
+## get date information
+latest_date    <- max(df$date)
+latest_year    <- year(latest_date)
+latest_month   <- month(latest_date)
+lastmonth_date <- latest_date - months(1)
+lastyear_date  <- latest_date - months(12)
+last2year_date <- latest_date %>% floor_date(unit = "months") - months(24)
+latest_month_label <- glue("{month_th[[latest_month]]} {latest_year+543}")
+regions <- c("TH00", "TH01", "TH02", "TH03", "TH06")
+```
+
+
+```{r include=FALSE, message=FALSE, warning=FALSE}
+df_last2yr <- df %>%
+  filter(date >= last2year_date, province_code %in% regions) %>%
+  mutate(ymw = glue("{year}_{str_pad(month, 2, pad = '0')}_{week}")) %>%
+  select(year, month, week, ymw, province_name, label, commod, unit, value)
+```
+
+
+```{r include=FALSE, message=FALSE, warning=FALSE}
+df_sparkline <- df_last2yr %>%
+  group_by(province_name, label, commod, unit) %>%
+  summarise(value_list = list(value)) %>% ungroup()
+```
+
+```{r include=FALSE, message=FALSE, warning=FALSE}
+df_wide <- df_last2yr %>%
+  mutate(month = str_pad(month, 2, pad = "0")) %>%
+  group_by(year, month, province_name, label, commod, unit) %>%
+  summarise(
+    value = mean(value)
+  ) %>% ungroup() %>%
+  pivot_wider(
+    c("province_name", "label", "commod", "unit"),
+    names_from = c("year", "month"),
+    values_from = value
+  ) %>% 
+  mutate(
+    price_latest_month = .data[[glue::glue("{year(latest_date)}_{str_pad(month(latest_date), 2, pad = '0')}")]],
+    price_last_month = .data[[glue::glue("{year(lastmonth_date)}_{str_pad(month(lastmonth_date), 2, pad = '0')}")]], 
+    price_last_year = .data[[glue::glue("{year(lastyear_date)}_{str_pad(month(lastyear_date), 2, pad = '0')}")]],
+    mom = round((price_latest_month - price_last_month)*100/price_latest_month, 1),
+    yoy = round((price_latest_month - price_last_year)*100/price_latest_month, 1)
+  ) %>%
+  filter(!is.na(price_latest_month)) %>%
+  left_join(df_sparkline)
+```
+
+```{r include=FALSE, message=FALSE, warning=FALSE}
+df_week <- df_last2yr %>% expand(province_name, label, year, month, week) %>%
+  left_join(df_last2yr) %>%
+#   left_join(
+#     ref_price_oae, 
+#     by = c("price_name" = "name", "commod" = "commod", "unit" = "unit")
+#   ) %>%
+  filter(year == latest_year, month == 5) %>%
+  pivot_wider(
+    c("province_name", "commod", "label",  "unit"),
+    names_prefix = "week_",
+    names_from = "week",
+    values_from = "value"
+  ) %>%
+  filter(!is.na(unit)) %>%
+  mutate(
+    week_avg = rowMeans(across(starts_with("week")), na.rm = TRUE),
+    week_avg = ifelse(week_avg > 250, round(week_avg, 0), round(week_avg, 2))
+  )
+```
+
+```{r include=FALSE, message=FALSE, warning=FALSE}
+df_final <- df_week %>% left_join(df_wide) %>%
+  select(
+    province_name,
+    commod,
+    label,
+    unit,
+    starts_with("week"),
+    mom, 
+    yoy,
+    value_list
+  ) %>% 
+  mutate(
+    province_name = ifelse(
+      province_name == "ประเทศไทย", "เฉลี่ยประเทศ", province_name
+    ),
+    last_24m = NA
+  )
+```
+
+```{r include=FALSE, message=FALSE, warning=FALSE}
+sd <- SharedData$new(df_final)
+```
+
+## {.tabset}
+### ภาพรวม
+```{r echo=FALSE}
+with_tooltip <- function(value, tooltip) {
+  tags$abbr(style = "text-decoration: underline; text-decoration-style: dotted; cursor: help",
+            title = tooltip, value)
+}
+
+bscols(
+  filter_select("province_name", "ภาค", sd, ~province_name),
+  filter_select("commod", "สินค้า", sd, ~commod)  
+)
+
+bscols(
+  reactable(
+    sd,
+    filterable = FALSE,
+    searchable = TRUE,
+    highlight = TRUE,
+    columns = list(
+      province_name = colDef(name = 'ภาค', show = FALSE),
+      commod = colDef(name = 'สินค้า', show = FALSE),
+      unit = colDef(name = 'หน่วย', show = FALSE), 
+      label = colDef(
+        name = 'ราคา', width = 250,
+        style = list(borderRight = "1px solid rgba(0, 0, 0, 0.1)"),
+        cell = function(value, index) {
+          location <- df_final$province_name[index]
+          unit <- df_final$unit[index]
+          tagList(
+            div(style = list(fontWeight = 400), value),
+            div(style = list(fontSize = 12), location)
+          )
+        }
+      ),
+      week_1 = colDef(
+        name = "สป.1", width = 65,
+        format = colFormat(separators = TRUE)
+      ),
+      week_2 = colDef(
+        name = "สป.2", width = 65,
+        format = colFormat(separators = TRUE)
+      ),
+      week_3 = colDef(
+        name = "สป.3", width = 65,
+        format = colFormat(separators = TRUE)
+      ),
+      week_4 = colDef(
+        name = "สป.4", width = 65,
+        format = colFormat(separators = TRUE)
+      ),
+      week_5 = colDef(
+        name = "สป.5", width = 65,
+        format = colFormat(separators = TRUE)
+      ),
+      week_avg = colDef(
+        name = "เฉลี่ย", width = 65,
+        format = colFormat(separators = TRUE),
+        style = list(borderRight = "1px solid rgba(0, 0, 0, 0.1)")
+      ),
+      mom = colDef(
+        header = with_tooltip("MoM %", "ร้อยละการเปลี่ยนแปลงเทียบกับเดือนที่แล้ว"),
+        width = 65,
+        cell = function(value, index) {
+          v = df_final$mom[[index]]
+          ifelse(v >= 0, paste0("+", v), v)
+        },
+        style = function(value, index) {
+          v = df_final$mom[[index]]
+          color = ifelse(v > 0, "#008000", "#e00000")
+          list(color = color)
+        }
+      ),
+      yoy = colDef(
+        header = with_tooltip("YoY %", "ร้อยละการเปลี่ยนแปลงเทียบกับปีที่แล้ว"),
+        width = 65,
+        cell = function(value, index) {
+          v = df_final$yoy[[index]]
+          ifelse(v >= 0, paste0("+", v), v)
+        },
+        style = function(value, index) {
+          v = df_final$yoy[[index]]
+          color = ifelse(v > 0, "#008000", "#e00000")
+          list(
+            borderRight = "1px solid rgba(0, 0, 0, 0.1)",
+            color = color
+          )
+        }
+      ),
+      value_list = colDef(show = FALSE),
+      last_24m = colDef(
+        name = 'ย้อนหลัง 24 เดือน', 
+        cell = function(value, index) {
+          sparkline(df_final$value_list[[index]], width = 120, height = 40)
+        },
+        width = 130
+      )
+    ),
+    columnGroups = list(
+      colGroup(
+        name = latest_month_label, 
+        columns = c("week_1", "week_2", "week_3", "week_4", "week_5", "week_avg"))
+    )
+  )
+)
+```
+
+### ข้อมูลดิบ
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+datatable(
+  df_last2yr %>% 
+    select(
+      year, month, week, label, commod, unit, province_name, value
+    ) %>% 
+    mutate(year = year+543), 
+  rownames = FALSE,
+  extensions = 'Buttons', 
+  options = list(
+    dom = 'Bfrtip',
+    buttons = c('copy', 'csv', 'excel', 'pdf', 'print')
+  )
+)
+```
+
+```{r include=FALSE, eval=FALSE}
+# render
+# rmarkdown::render("notebook/reactable_price.Rmd")
+```

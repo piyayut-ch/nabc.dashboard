@@ -1,0 +1,160 @@
+```{r}
+library(tidyverse)
+library(lubridate)
+library(vroom)
+library(DT)
+library(here)
+library(htmltools)
+```
+
+```{r}
+oae_index_m <- readRDS(here("data/oae_index_m.rds"))
+oae_index_q <- readRDS(here("data/oae_index_q.rds"))
+oae_index_y <- readRDS(here("data/oae_index_y.rds"))
+```
+
+```{r}
+province = "เชียงราย"
+year_begin = 2009
+year_end = 2022
+```
+
+```{r}
+data_DT_M <- oae_index_m %>%
+  filter(PROVINCE_NM_TH == province) %>%
+  filter(YEAR >= year_begin & YEAR <= year_end) %>%
+  mutate(
+    CI = round(CI,0)
+  ) %>%
+  arrange(YEAR, MONTH) %>%
+  pivot_wider(
+    c("PROVINCE_CODE", "PROVINCE_NM_TH", "PROD_CODE", "PROD_NAME"),
+    names_from = c("YEAR", "MONTH"),
+    values_from = "CI"
+  ) %>%
+  arrange(PROVINCE_NM_TH, PROD_NAME)
+
+
+data_DT_Q <- oae_index_q %>%
+  filter(PROVINCE_NM_TH == province) %>%
+  filter(YEAR >= year_begin & YEAR <= year_end) %>%
+  mutate(
+    CI = round(CI,0)
+  ) %>%
+  arrange(YEAR, QUARTER) %>%
+  pivot_wider(
+    c("PROVINCE_CODE", "PROVINCE_NM_TH", "PROD_CODE", "PROD_NAME"),
+    names_from = c("YEAR", "QUARTER"),
+    values_from = "CI"
+  ) %>%
+  arrange(PROVINCE_NM_TH, PROD_NAME)
+
+
+
+data_DT_Y <- oae_index_y %>%
+  filter(PROVINCE_NM_TH == province) %>%
+  filter(YEAR >= year_begin & YEAR <= year_end) %>%
+  mutate(
+    CI = round(CI,0)
+  ) %>%
+  arrange(YEAR) %>%
+  pivot_wider(
+    c("PROVINCE_CODE", "PROVINCE_NM_TH", "PROD_CODE", "PROD_NAME"),
+    names_from = "YEAR",
+    values_from = "CI"
+  ) %>%
+  arrange(PROVINCE_NM_TH, PROD_NAME)
+```
+
+```{r}
+data_fmt <- data_DT_Y %>%
+  count(PROD_NAME) %>%
+  mutate(
+    color = "black",
+    bgcolor = case_when(
+      PROD_NAME %in% c("สินค้าเกษตร") ~ "lightskyblue",
+      PROD_NAME %in% c("พืชผลสำคัญ", "ปศุสัตว์", "ประมง") ~ "azure",
+      TRUE ~ "white"
+    )
+  )
+```
+
+```{r}
+gen_sketch <- function(df, tf) {
+  meta <- colnames(df)[-c(1:4)] %>% str_split_fixed("_", 2) %>% as.data.frame()
+  colnames(meta) <- c("x1", "x2")
+  meta_by_year <- meta %>% count(x1)
+  
+  
+  tr1 <- list()
+  tr1[[1]] <- if(tf == "Y") {
+    tags$th('รายการ')
+  } else {
+    tags$th(rowspan = 2, 'รายการ')
+  }
+
+  for(i in 1:nrow(meta_by_year)){
+    tr1[[i+1]] = tags$th(colspan = meta_by_year[[i,2]], meta_by_year[[i,1]])
+  }
+  
+  tr2 <- list()
+  for(i in 1:nrow(meta)){
+    tr2[[i]] = tags$th(meta[[i,2]])
+  }
+  
+  if(tf != "Y") {
+    tags$table(class = "display",
+      tags$thead(
+        tags$tr(tr1),
+        tags$tr(tr2)
+      )
+    )
+  } else {
+    tags$table(class = "display",
+      tags$thead(
+        tags$tr(tr1)
+      )
+    )
+  }
+}
+
+gen_sketch(data_DT_Y, tf = "Y")
+```
+
+```{r}
+DT_index <- function(df, tf){
+  col_names <- df %>% select(-c(1:4)) %>% colnames() %>% str_sub(1, 4) %>% as.numeric()
+  year_begin <- min(col_names)
+  year_end <- max(col_names)
+  n_cols = length(col_names) + 1
+  
+  sketch = gen_sketch(df, tf)
+  
+  datatable(
+    df[, -c(1:3)],
+    container = sketch,
+    rownames = FALSE,
+    extensions = 'Buttons',
+    options = list(
+      dom = 'Bt',
+      ordering = FALSE,
+      pageLength = 40,
+      initComplete = JS(
+        "function(settings, json) {",
+        "$('body').css({'font-family': 'Athiti'});",
+        "$('div.dt-buttons').css({'float' : 'right'});",
+        "}"
+      ),
+      buttons = c('copy', 'csv', 'excel', 'pdf', 'print')
+    )
+  ) %>%
+    formatStyle(
+      1:n_cols, valueColumns = 1,
+      backgroundColor = styleEqual(
+        data_fmt$PROD_NAME, data_fmt$bgcolor
+      )
+    )
+}
+
+DT_index(data_DT_Y, "Y")
+```
