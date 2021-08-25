@@ -5,7 +5,7 @@ pkgs <- c(
   'glue', 'here',
   'tidyverse', 'DT',
   'lubridate',
-  'reactable', 'echarts4r', 'htmltools',
+  'htmltools',
   'extrafont', 'hrbrthemes', 'ggsci', 'scales'
 )
 xfun::pkg_attach2(pkgs, message = FALSE)

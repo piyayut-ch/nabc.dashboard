@@ -22,7 +22,7 @@ RUN apt-get update && apt-get install -y \
 # Change the packages list to suit your needs
 RUN R -e 'install.packages(c(\
               "glue", "here", \
-              "reactable", "DT", \
+              "DT", \
               "extrafont", "hrbrthemes", "ggsci", "scales" \
             ), \
             repos="https://packagemanager.rstudio.com/cran/__linux__/focal/2021-07-01"\
