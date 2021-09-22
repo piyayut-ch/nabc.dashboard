@@ -1,0 +1,220 @@
+```{r}
+################################################################################
+# set up -----
+pkgs <- c(
+  'shiny',
+  'glue', 'here',
+  'tidyverse', 'reactable',
+  'vroom', 'readxl',
+  'lubridate',
+  'sf', 'leaflet', 'echarts4r',
+  'htmltools',
+  'extrafont', 'hrbrthemes', 'ggsci', 'scales'
+)
+xfun::pkg_attach2(pkgs, message = FALSE)
+```
+
+```{r}
+map_tha1 <- readRDS(here("data/tha_adm1_sim.rds"))
+```
+
+```{r}
+df_production <- vroom(here("data/OAE_FACTS.csv")) %>% 
+  janitor::clean_names() %>% 
+  filter(version == 2) %>%
+  filter(prod_name != "ข้าวปทุมรวม" & prod_name != "ข้าวขาวรวม" & prod_name != "ข้าวนาปี") %>%
+  mutate(
+    estimate_id = factor(estimate_id, levels = c("E1", "E2", "A1", "R1")),
+    quantity = as.numeric(quantity),
+    year_th = year +543, .before = "year"
+  ) %>%
+  mutate(
+    production = area * productivity * quantity / 100
+  )
+
+df_price <- vroom(here("data/OAE_FACTS_PRICE.csv")) %>% 
+  janitor::clean_names() %>%
+  filter(version == 2) %>%
+  mutate(year_th = year +543, .before = "year")
+```
+
+```{r}
+df_fact <- df_production %>% 
+  left_join(df_price, by = c("year_th", "year", "month", "prod_code", "province_code")) %>%
+  filter(year_th >= 2009 + 543) %>%
+  select(
+    estimate_id, 
+    season_name, year_th, year, month, 
+    prod_code, prod_name,
+    province_code, province_nm_th,
+    area, productivity, production, price_avg
+  ) %>%
+  arrange(prod_code, province_code, year_th, month) %>%
+  fill(price_avg) %>%
+  mutate(farm_income = production * price_avg)
+```
+
+```{r}
+df_fact %>%
+  saveRDS(here("data/oae_fact.rds"))
+```
+
+```{r}
+df_fact_y <- df_fact %>%
+  filter(year_th < 2565) %>%
+  group_by(year_th, prod_code, prod_name, province_code, province_nm_th) %>%
+  summarize(
+    production = sum(production),
+    price_avg = mean(price_avg, na.rm = TRUE), 
+    farm_income = sum(farm_income)
+  ) %>% 
+  ungroup() %>%
+  arrange(-year_th)
+```
+
+```{r}
+df_fact_y_avg10 <- df_fact_y %>% 
+  group_by(prod_code, prod_name, province_code, province_nm_th) %>% 
+  top_n(n = 10) %>%
+  summarize(
+    production_avg10 = mean(production, na.rm = TRUE),
+    price_avg10 = mean(price_avg, na.rm = TRUE),
+    farm_income_avg10 = mean(farm_income, na.rm = TRUE)
+  ) 
+```
+
+```{r}
+break_diff <- c(-Inf, -30, -10, 10, 30, Inf)
+label_diff <- c("ลดลงมาก", "ลดลงอย่างมีนัยสำคัญ", "ปกติ", "เพิ่มขึ้นอย่างมีนัยสำคัญ", "เพิ่มขึ้นมาก")
+
+df_fact_y_final <- df_fact_y %>%
+  left_join(df_fact_y_avg10, by = c("prod_code", "prod_name", "province_code", "province_nm_th")) %>%
+  mutate(
+    adm1_pcode = str_c("TH", province_code),
+    production_diff = (production - production_avg10)*100 / production_avg10,
+    price_avg_diff = (price_avg - price_avg10)*100 / price_avg10,
+    farm_income_diff = (farm_income - farm_income_avg10)*100 / farm_income_avg10,
+    production_diff_cut = cut(production_diff, breaks = break_diff, labels = label_diff),
+    price_avg_diff_cut = cut(price_avg_diff, breaks = break_diff, labels = label_diff),
+    farm_income_diff_cut = cut(farm_income_diff, breaks = break_diff, labels = label_diff),
+  )
+```
+
+```{r}
+df_fact_y_final_filterd <- df_fact_y_final %>%
+  filter(year_th == 2564, prod_code == 31312)
+```
+
+```{r}
+df_map1 <- map_tha1 %>% 
+  left_join(df_fact_y_final_filterd, by = c("adm1_pcode" = "adm1_pcode"))
+```
+
+```{r}
+map_diff <- function(df_map, .variable = "production") {
+  my_pallete <- c("#ca0020", "#f4a582", "#f7f7f7", "#92c5de", "#0571b0")
+  .variable_diff <- paste0(.variable, "_diff_cut")
+  
+  pal <- colorFactor(
+    my_pallete,
+    df_map[[.variable_diff]]
+  )
+
+  var1 <- list(
+    label = "ผลผลิต",
+    value = format(
+      round(df_map[[.variable]], 0), 
+      big.mark = ',', nsmall = 0
+    )
+  )
+
+  lab <- glue::glue(
+      "<strong>{df_map$adm1_th}</strong><br/>
+      {var1$label}: {var1$value} ตัน <br/>
+    ") %>% lapply(htmltools::HTML)
+
+  leaflet(df_map) %>%
+    addProviderTiles(providers$CartoDB.Voyager) %>%
+    addPolygons(
+      fillColor = ~pal(df_map[[.variable_diff]]),
+      weight = 1,
+      opacity = 1,
+      color = "dimgrey",
+      dashArray = "2",
+      fillOpacity = 1,
+      label = lab,
+      labelOptions = labelOptions(textsize = "14px"),
+      highlight = highlightOptions(
+        weight = 3,
+        color = "#666",
+        dashArray = "",
+        fillOpacity = 0.7,
+        bringToFront = TRUE
+      )
+    ) %>%
+    addLegend(
+      pal = pal,
+      values = ~df_map[[.variable_diff]],
+      opacity = 0.7,
+      title = "",
+      na.label = "ไม่มีข้อมูล",
+      position = "bottomleft"
+    )
+}
+
+map_diff(df_map1, "price_avg")
+```
+
+```{r}
+my_pallete <- c("#ca0020", "#f4a582", "#f7f7f7", "#92c5de", "#0571b0")
+
+pal <- colorFactor(
+  my_pallete,
+  df_map1$production_diff_cut
+)
+
+var1 <- list(
+  label = "ผลผลิต",
+  value = format(
+    round(df_map1$production, 0), 
+    big.mark = ',', nsmall = 0
+  )
+)
+
+lab <- glue::glue(
+    "<strong>{df_map1$adm1_th}</strong><br/>
+    {var1$label}: {var1$value} ตัน <br/>
+  ") %>% lapply(htmltools::HTML)
+
+leaflet(df_map1) %>%
+  addProviderTiles(providers$CartoDB.Voyager) %>%
+  addPolygons(
+    fillColor = ~pal(df_map1$production_diff_cut),
+    weight = 1,
+    opacity = 1,
+    color = "dimgrey",
+    dashArray = "2",
+    fillOpacity = 1,
+    label = lab,
+    labelOptions = labelOptions(textsize = "14px"),
+    highlight = highlightOptions(
+      weight = 3,
+      color = "#666",
+      dashArray = "",
+      fillOpacity = 0.7,
+      bringToFront = TRUE
+    )
+  ) %>%
+  addLegend(
+    pal = pal,
+    values = ~df_map1$production_diff_cut,
+    opacity = 0.7,
+    title = "",
+    na.label = "ไม่มีข้อมูล",
+    position = "bottomleft"
+  )
+```
+
+```{r}
+
+```

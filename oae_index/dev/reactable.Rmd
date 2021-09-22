@@ -1,0 +1,442 @@
+```{r}
+################################################################################
+# set up -----
+pkgs <- c(
+  'shiny',
+  'glue', 'here',
+  'tidyverse', 'reactable',
+  'vroom', 'readxl',
+  'lubridate',
+  'htmltools',
+  'extrafont', 'hrbrthemes', 'ggsci', 'scales'
+)
+xfun::pkg_attach2(pkgs, message = FALSE)
+```
+
+```{r}
+shiny::fluidRow
+```
+
+```{r}
+devtools::install_github("glin/reactable")
+library(reactable)
+packageVersion("reactable")
+```
+
+```{r}
+month_th_ref <- read_excel(here("data/month_th_ref.xlsx"))
+tha1_ref <- read_excel(here("data/tha1_ref.xlsx"))
+month_th_lookup <- set_names(month_th_ref$month_abb_th , month_th_ref$month)
+```
+
+```{r}
+df_m <- readRDS(here("data/oae_index_m.rds")) %>%
+  janitor::clean_names() %>%
+  filter(year >= 2009, prod_name != "ข้าวปทุมรวม" & prod_name != "ข้าวขาวรวม" & prod_name != "ข้าวนาปี") %>%
+  arrange(-year, -month) %>%
+  mutate(time_label = str_c(month_th_lookup[month], " ", year+543))
+
+df_q <- readRDS(here("data/oae_index_q.rds")) %>%
+  janitor::clean_names() %>%
+  filter(year >= 2009, prod_name != "ข้าวปทุมรวม" & prod_name != "ข้าวขาวรวม" & prod_name != "ข้าวนาปี") %>%
+  arrange(-year, -quarter) %>%
+  mutate(time_label = str_c("Q", quarter, "/", year+543))
+
+df_y <- readRDS(here("data/oae_index_y.rds")) %>%
+  janitor::clean_names() %>%
+  filter(year >= 2009, prod_name != "ข้าวปทุมรวม" & prod_name != "ข้าวขาวรวม" & prod_name != "ข้าวนาปี") %>%
+  arrange(-year) %>%
+  mutate(time_label = year+543)
+```
+
+```{r}
+tabPanel
+```
+
+```{r}
+index_wider <- function(df, .variable = "ci") {
+  df %>%
+    pivot_wider(
+      prod_code:province_nm_th,
+      names_from = "time_label",
+      values_from = .variable
+    ) %>%
+    select(province_nm_th, prod_name, everything()) %>%
+    arrange(province_nm_th, prod_name)
+}
+```
+
+```{r}
+library(shiny)
+selectizeInput
+```
+
+```{r}
+df_m_wide <- index_wider(df_m)
+df_q_wide <- index_wider(df_q)
+df_y_wide <- index_wider(df_y)
+```
+
+```{r}
+reactable_index <- function(df) {
+  reactable(
+    df,
+    highlight = TRUE,
+    sortable = FALSE,
+    bordered = TRUE,
+    defaultPageSize = 38,
+    defaultColDef = colDef(
+  #     cell = function(value) format(value, nsmall = 1),
+      minWidth = 90,
+      headerStyle = list(background = "#000753", color = "white")
+    ),
+    columns = list(
+      province_nm_th = colDef(
+        name = "ภาค/จังหวัด",
+        width = 150,
+        sticky = "left",
+      ),
+      prod_name = colDef(
+        name = "สินค้า",
+        width = 150,
+        sticky = "left",
+      ),
+      province_code = colDef(show = FALSE),
+      prod_code = colDef(show = FALSE)
+    ),
+    rowStyle = function(index) {
+      if (df_q_wide[index, "prod_code"] == 0) {
+        list(background = "lightskyblue")
+      } else if (df_q_wide[index, "prod_code"] %in% c(1e8, 2e8, 3e8)) {
+        list(background = "azure")
+      }
+    },
+    rowClass = function(index) {
+      if (df_q_wide[index, "province_code"] == 0) {
+        "bold"
+      }
+    }
+  )
+}
+```
+
+```{r}
+reactable_index(df_m_wide)
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+df <- vroom::vroom(here("data/OAE_INDEX_PROVINCE_M.csv")) %>%
+  mutate(DATE = as.Date(str_c(YEAR, "-", MONTH, "-1"))) %>%
+  filter(DATE > "2009-01-01", DATE < "2021-12-01",  
+         PROD_NAME != "ข้าวปทุมรวม" & PROD_NAME != "ข้าวขาวรวม" & PROD_NAME != "ข้าวนาปี") %>%
+  mutate(PRICE = QV_PRICE / QV)
+```
+
+```{r}
+df %>% filter(CI > 1e4) %>% count(YEAR, PROD_CODE, PROD_NAME)
+```
+
+```{r}
+df <- vroom::vroom(here("data/OAE_INDEX_PROVINCE_M.csv")) %>%
+  mutate(DATE = as.Date(str_c(YEAR, "-", MONTH, "-1"))) %>%
+  filter(DATE > "2009-01-01", DATE < "2021-12-01",  
+         PROD_NAME != "ข้าวปทุมรวม" & PROD_NAME != "ข้าวขาวรวม" & PROD_NAME != "ข้าวนาปี") %>%
+  mutate(PRICE = QV_PRICE / QV)
+```
+
+```{r}
+df %>% head(2)
+```
+
+```{r}
+df %>%
+  head(5) %>%
+  mutate(TIME_LBL = str_c(MONTH, "-", YEAR))
+#   pivot_wider(
+#     c(PROD_CODE:PROVINCE_NM_TH),
+#     names_from = "",
+#   )
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+source(here('utils.R'), encoding = 'UTF-8')
+# loadfonts(device = "win", quiet = TRUE)
+# Sys.setlocale("LC_CTYPE", "Thai")
+
+month_th <- c(
+  "1" = "มค",
+  "2" = "กพ",
+  "3" = "มีค",
+  "4" = "เมย",
+  "5" = "พค",
+  "6" = "มิย",
+  "7" = "กค",
+  "8" = "สค",
+  "9" = "กย",
+  "10" = "ตค",
+  "11" = "พย",
+  "12" = "ธค"
+)
+
+################################################################################
+# load data and reference table -----
+oae_index_m <- readRDS(here("data/oae_index_m.rds")) %>%
+  filter(PROD_NAME != "ข้าวปทุมรวม" & PROD_NAME != "ข้าวขาวรวม" & PROD_NAME != "ข้าวนาปี") %>%
+  mutate(
+    MONTH_LABEL = month_th[MONTH],
+    YEAR_TH = YEAR + 543,
+    PROD_NAME_LABEL = case_when(
+      PROD_CODE == 0 ~ as.character(PROD_NAME),
+      PROD_CODE %in% c(100000000, 200000000, 300000000) ~ str_c("  ", PROD_NAME),
+      TRUE ~ str_c("    ", PROD_NAME),
+    )
+  )
+oae_index_q <- readRDS(here("data/oae_index_q.rds")) %>%
+  filter(PROD_NAME != "ข้าวปทุมรวม" & PROD_NAME != "ข้าวขาวรวม" & PROD_NAME != "ข้าวนาปี") %>%
+  mutate(
+    QUARTER_LABEL = paste0("Q", QUARTER),
+    YEAR_TH = YEAR + 543,
+    PROD_NAME_LABEL = case_when(
+      PROD_CODE == 0 ~ as.character(PROD_NAME),
+      PROD_CODE %in% c(100000000, 200000000, 300000000) ~ str_c("  ", PROD_NAME),
+      TRUE ~ str_c("    ", PROD_NAME),
+    )
+  )
+oae_index_y <- readRDS(here("data/oae_index_y.rds")) %>%
+  filter(PROD_NAME != "ข้าวปทุมรวม" & PROD_NAME != "ข้าวขาวรวม" & PROD_NAME != "ข้าวนาปี") %>%
+  mutate(
+    YEAR_TH = YEAR + 543,
+    PROD_NAME_LABEL = case_when(
+      PROD_CODE == 0 ~ as.character(PROD_NAME),
+      PROD_CODE %in% c(100000000, 200000000, 300000000) ~ str_c("  ", PROD_NAME),
+      TRUE ~ str_c("    ", PROD_NAME),
+    )
+  )
+
+
+
+data_fmt <- oae_index_y %>%
+  count(PROD_NAME) %>%
+  mutate(
+    color = "black",
+    bgcolor = case_when(
+      PROD_NAME %in% c("สินค้าเกษตร") ~ "lightskyblue",
+      PROD_NAME %in% c("พืชผลสำคัญ", "ปศุสัตว์", "ประมง") ~ "azure",
+      TRUE ~ "white"
+    )
+  )
+
+province_names <- oae_index_y %>% filter() %>% count(PROVINCE_NM_TH) %>% pull(PROVINCE_NM_TH)
+region_names <- oae_index_y %>% count(PROVINCE_NM_TH) %>% pull(PROVINCE_NM_TH)
+
+# province_names <- oae_index_y %>% count(PROVINCE_NM_TH) %>% pull(PROVINCE_NM_TH)
+
+year_min <- min(oae_index_y$YEAR_TH)
+year_max <- max(oae_index_y$YEAR_TH)
+```
+
+```{r}
+oae_index_y
+```
+
+```{r}
+province = "เชียงราย"
+year_begin = 2009
+year_end = 2022
+```
+
+```{r}
+data_DT_M <- oae_index_m %>%
+  filter(PROVINCE_NM_TH == province) %>%
+  filter(YEAR >= year_begin & YEAR <= year_end) %>%
+  mutate(
+    CI = round(CI,0)
+  ) %>%
+  arrange(YEAR, MONTH) %>%
+  pivot_wider(
+    c("PROVINCE_CODE", "PROVINCE_NM_TH", "PROD_CODE", "PROD_NAME"),
+    names_from = c("YEAR", "MONTH"),
+    values_from = "CI"
+  ) %>%
+  arrange(PROVINCE_NM_TH, PROD_NAME)
+
+
+data_DT_Q <- oae_index_q %>%
+  filter(PROVINCE_NM_TH == province) %>%
+  filter(YEAR >= year_begin & YEAR <= year_end) %>%
+  mutate(
+    CI = round(CI,0)
+  ) %>%
+  arrange(YEAR, QUARTER) %>%
+  pivot_wider(
+    c("PROVINCE_CODE", "PROVINCE_NM_TH", "PROD_CODE", "PROD_NAME"),
+    names_from = c("YEAR", "QUARTER"),
+    values_from = "CI"
+  ) %>%
+  arrange(PROVINCE_NM_TH, PROD_NAME)
+
+
+
+data_DT_Y <- oae_index_y %>%
+  filter(PROVINCE_NM_TH == province) %>%
+  filter(YEAR >= year_begin & YEAR <= year_end) %>%
+  mutate(
+    CI = round(CI,0)
+  ) %>%
+  arrange(YEAR) %>%
+  pivot_wider(
+    c("PROVINCE_CODE", "PROVINCE_NM_TH", "PROD_CODE", "PROD_NAME"),
+    names_from = "YEAR",
+    values_from = "CI"
+  ) %>%
+  arrange(PROVINCE_NM_TH, PROD_NAME)
+```
+
+```{r}
+data_fmt <- data_DT_Y %>%
+  count(PROD_NAME) %>%
+  mutate(
+    color = "black",
+    bgcolor = case_when(
+      PROD_NAME %in% c("สินค้าเกษตร") ~ "lightskyblue",
+      PROD_NAME %in% c("พืชผลสำคัญ", "ปศุสัตว์", "ประมง") ~ "azure",
+      TRUE ~ "white"
+    )
+  )
+```
+
+```{r}
+gen_sketch <- function(df, tf) {
+  meta <- colnames(df)[-c(1:4)] %>% str_split_fixed("_", 2) %>% as.data.frame()
+  colnames(meta) <- c("x1", "x2")
+  meta_by_year <- meta %>% count(x1)
+  
+  
+  tr1 <- list()
+  tr1[[1]] <- if(tf == "Y") {
+    tags$th('รายการ')
+  } else {
+    tags$th(rowspan = 2, 'รายการ')
+  }
+
+  for(i in 1:nrow(meta_by_year)){
+    tr1[[i+1]] = tags$th(colspan = meta_by_year[[i,2]], meta_by_year[[i,1]])
+  }
+  
+  tr2 <- list()
+  for(i in 1:nrow(meta)){
+    tr2[[i]] = tags$th(meta[[i,2]])
+  }
+  
+  if(tf != "Y") {
+    tags$table(class = "display",
+      tags$thead(
+        tags$tr(tr1),
+        tags$tr(tr2)
+      )
+    )
+  } else {
+    tags$table(class = "display",
+      tags$thead(
+        tags$tr(tr1)
+      )
+    )
+  }
+}
+
+gen_sketch(data_DT_Y, tf = "Y")
+```
+
+```{r}
+DT_index <- function(df, tf){
+  col_names <- df %>% select(-c(1:4)) %>% colnames() %>% str_sub(1, 4) %>% as.numeric()
+  year_begin <- min(col_names)
+  year_end <- max(col_names)
+  n_cols = length(col_names) + 1
+  
+  sketch = gen_sketch(df, tf)
+  
+  datatable(
+    df[, -c(1:3)],
+    container = sketch,
+    rownames = FALSE,
+    extensions = 'Buttons',
+    options = list(
+      dom = 'Bt',
+      ordering = FALSE,
+      pageLength = 40,
+      initComplete = JS(
+        "function(settings, json) {",
+        "$('body').css({'font-family': 'Athiti'});",
+        "$('div.dt-buttons').css({'float' : 'right'});",
+        "}"
+      ),
+      buttons = c('copy', 'csv', 'excel', 'pdf', 'print')
+    )
+  ) %>%
+    formatStyle(
+      1:n_cols, valueColumns = 1,
+      backgroundColor = styleEqual(
+        data_fmt$PROD_NAME, data_fmt$bgcolor
+      )
+    )
+}
+
+DT_index(data_DT_Y, "Y")
+```

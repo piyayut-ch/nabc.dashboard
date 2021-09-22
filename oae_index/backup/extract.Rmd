@@ -1,0 +1,49 @@
+```{r}
+library(tidyverse)
+library(writexl)
+```
+
+```{r}
+df_m <- readRDS("data/oae_index_m.rds")
+df_q <- readRDS("data/oae_index_q.rds")
+df_y <- readRDS("data/oae_index_y.rds")
+```
+
+```{r}
+df_m %>%
+  filter(PROVINCE_NM_TH == "เพชรบุรี") %>%
+  arrange(YEAR, MONTH) %>%
+  pivot_wider(
+    c(PROD_CODE, PROD_NAME),
+    names_from = c("YEAR", "MONTH"),
+    values_from = "CI"
+  ) %>%
+  arrange(PROD_CODE) %>%
+  write_xlsx("เพชรบุรี_m.xlsx")
+
+df_q %>%
+  filter(PROVINCE_NM_TH == "เพชรบุรี") %>%
+  arrange(YEAR, QUARTER) %>%
+  pivot_wider(
+    c(PROD_CODE, PROD_NAME),
+    names_from = c("YEAR", "QUARTER"),
+    values_from = "CI"
+  ) %>%
+  arrange(PROD_CODE) %>%
+  write_xlsx("เพชรบุรี_q.xlsx")
+
+df_y %>%
+  filter(PROVINCE_NM_TH == "เพชรบุรี") %>%
+  arrange(YEAR) %>%
+  pivot_wider(
+    c(PROD_CODE, PROD_NAME),
+    names_from = "YEAR",
+    values_from = "CI"
+  ) %>%
+  arrange(PROD_CODE) %>%
+  write_xlsx("เพชรบุรี_y.xlsx")
+```
+
+```{r}
+
+```

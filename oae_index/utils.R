@@ -12,77 +12,120 @@
 #   theme = NULL
 # )
 
+
 ################################################################################
+index_wider <- function(df, .variable = "ci") {
+  df %>%
+    pivot_wider(
+      prod_code:province_nm_th,
+      names_from = "time_label",
+      values_from = .variable
+    ) %>%
+    select(province_nm_th, prod_name, everything()) %>%
+    arrange(province_nm_th, prod_name)
+}
 
-gen_sketch <- function(df, tf) {
-  meta <- colnames(df)[-c(1:4)] %>% str_split_fixed("_", 2) %>% as.data.frame()
-  colnames(meta) <- c("x1", "x2")
-  meta_by_year <- meta %>% count(x1)
-  
-  
-  tr1 <- list()
-  tr1[[1]] <- if(tf == "Y") {
-    tags$th('รายการ')
-  } else {
-    tags$th(rowspan = 2, 'รายการ')
-  }
-
-  for(i in 1:nrow(meta_by_year)){
-    tr1[[i+1]] = tags$th(colspan = meta_by_year[[i,2]], meta_by_year[[i,1]])
-  }
-  
-  tr2 <- list()
-  for(i in 1:nrow(meta)){
-    tr2[[i]] = tags$th(meta[[i,2]])
-  }
-  
-  if(tf != "Y") {
-    tags$table(class = "display",
-      tags$thead(
-        tags$tr(tr1),
-        tags$tr(tr2)
-      )
-    )
-  } else {
-    tags$table(class = "display",
-      tags$thead(
-        tags$tr(tr1)
-      )
-    )
-  }
+reactable_index <- function(df) {
+  reactable(
+    df,
+    highlight = TRUE,
+    sortable = FALSE,
+    bordered = TRUE,
+    defaultPageSize = 38,
+    defaultColDef = colDef(
+  #     cell = function(value) format(value, nsmall = 1),
+      minWidth = 90,
+      headerStyle = list(background = "#000753", color = "white", textAlign = "center")
+    ),
+    columns = list(
+      province_nm_th = colDef(
+        name = "ภาค/จังหวัด",
+        width = 100,
+        sticky = "left",
+      ),
+      prod_name = colDef(
+        name = "สินค้า",
+        width = 120,
+        sticky = "left",
+      ),
+      province_code = colDef(show = FALSE),
+      prod_code = colDef(show = FALSE)
+    ),
+    rowStyle = function(index) {
+      if (df[index, "prod_code"] == 0) {
+        list(background = "lightskyblue")
+      } else if (df[index, "prod_code"] %in% c(1e8, 2e8, 3e8)) {
+        list(background = "azure")
+      }
+    },
+    rowClass = function(index) {
+      if (df[index, "province_code"] == 0) {
+        "bold"
+      }
+    }
+  )
 }
 
 
-DT_index <- function(df, tf){
-  col_names <- df %>% select(-c(1:4)) %>% colnames() %>% str_sub(1, 4) %>% as.numeric()
-  year_begin <- min(col_names)
-  year_end <- max(col_names)
-  n_cols = length(col_names) + 1
+################################################################################
+map_diff <- function(df_map, 
+                     .variable = "production", 
+                     .pal = c("#ca0020", "#f4a582", "#f7f7f7", "#92c5de", "#0571b0")) {
   
-  sketch = gen_sketch(df, tf)
-  
-  datatable(
-    df[, -c(1:3)],
-    container = sketch,
-    rownames = FALSE,
-    extensions = 'Buttons',
-    options = list(
-      dom = 'Bt',
-      ordering = FALSE,
-      pageLength = 40,
-      initComplete = JS(
-        "function(settings, json) {",
-        "$('body').css({'font-family': 'Athiti'});",
-        "$('div.dt-buttons').css({'float' : 'right'});",
-        "}"
-      ),
-      buttons = c('copy', 'csv', 'excel', 'pdf', 'print')
+  .variable_diff <- paste0(.variable, "_diff_cut")
+  .variable_label <- case_when(
+    .variable == "production" ~ "ผลผลิต",
+    .variable == "price_avg" ~ "ราคา",
+    TRUE ~ "รายได้",
+  )
+  .variable_unit <- case_when(
+    .variable == "production" ~ "ตัน",
+    .variable == "price_avg" ~ "บาท",
+    TRUE ~ "บาท",
+  )
+  pal <- colorFactor(
+    .pal,
+    df_map[[.variable_diff]]
+  )
+
+  var1 <- list(
+    label = .variable_label,
+    value = format(
+      round(df_map[[.variable]], 0), 
+      big.mark = ',', nsmall = 0
     )
-  ) %>%
-    formatStyle(
-      1:n_cols, valueColumns = 1,
-      backgroundColor = styleEqual(
-        data_fmt$PROD_NAME, data_fmt$bgcolor
+  )
+
+  lab <- glue::glue(
+      "<strong>{df_map$adm1_th}</strong><br/>
+      {var1$label}: {var1$value} {.variable_unit} <br/>
+    ") %>% lapply(htmltools::HTML)
+
+  leaflet(df_map) %>%
+    addProviderTiles(providers$CartoDB.Voyager) %>%
+    addPolygons(
+      fillColor = ~pal(df_map[[.variable_diff]]),
+      weight = 1,
+      opacity = 1,
+      color = "dimgrey",
+      dashArray = "2",
+      fillOpacity = 1,
+      label = lab,
+      labelOptions = labelOptions(textsize = "14px"),
+      highlight = highlightOptions(
+        weight = 3,
+        color = "#666",
+        dashArray = "",
+        fillOpacity = 0.7,
+        bringToFront = TRUE
       )
+    ) %>%
+    addLegend(
+      pal = pal,
+      values = ~df_map[[.variable_diff]],
+      opacity = 0.7,
+      title = "",
+      na.label = "ไม่มีข้อมูล",
+      position = "bottomleft"
     )
 }

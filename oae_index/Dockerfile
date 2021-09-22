@@ -12,7 +12,13 @@ RUN apt-get update && apt-get install -y \
     libssl-dev \
     libfontconfig1-dev \
     libfreetype6-dev \
-    libcairo2-dev
+    libcairo2-dev \
+    libpng-dev \
+    libudunits2-dev \
+    libgdal-dev \
+    gdal-bin \
+    libgeos-dev \
+    libproj-dev
 
 # RUN apt-get update && \
 #     apt-get upgrade -y && \
@@ -22,16 +28,18 @@ RUN apt-get update && apt-get install -y \
 # Change the packages list to suit your needs
 RUN R -e 'install.packages(c(\
               "glue", "here", \
-              "DT", \
-              "extrafont", "hrbrthemes", "ggsci", "scales" \
+              "remotes", "readxl", "writexl", "sf", "leaflet" \
             ), \
             repos="https://packagemanager.rstudio.com/cran/__linux__/focal/2021-07-01"\
           )'
 
+RUN R -e 'remotes::install_github("glin/reactable")'
+
+
 # copy the app directory into the image
 COPY . ./app
 
-RUN Rscript -e 'extrafont::font_import("app/font", prompt = FALSE)'
+# RUN Rscript -e 'extrafont::font_import("app/font", prompt = FALSE)'
 
 # expose port
 EXPOSE 3838
