@@ -44,7 +44,6 @@ vignettes/*.pdf
 
 # raw-data
 data-raw/*.xlsx
-*.xlsx
 
 # pkgdown
 docs
