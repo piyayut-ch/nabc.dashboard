@@ -18,7 +18,8 @@ RUN apt-get update && apt-get install -y \
     libgdal-dev \
     gdal-bin \
     libgeos-dev \
-    libproj-dev
+    libproj-dev \
+    libicu-dev
 
 # RUN apt-get update && \
 #     apt-get upgrade -y && \
@@ -27,7 +28,7 @@ RUN apt-get update && apt-get install -y \
 # install R packages required 
 # Change the packages list to suit your needs
 RUN R -e 'install.packages(c(\
-              "glue", "here", \
+              "glue", "here", "janitor", \
               "remotes", "readxl", "writexl", "sf", "leaflet" \
             ), \
             repos="https://packagemanager.rstudio.com/cran/__linux__/focal/2021-07-01"\
